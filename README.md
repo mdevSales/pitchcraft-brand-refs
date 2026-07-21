@@ -1,6 +1,9 @@
 # pitchcraft-brand-refs
 
-Authoritative Agentforce / Salesforce brand references vendored by the pitchcraft skill.
+Authoritative Agentforce / Salesforce brand references vendored by the pitchcraft Claude skill.
+
+📖 **Start here:** [docs/HOW-THE-SKILL-WORKS.md](docs/HOW-THE-SKILL-WORKS.md) — walkthrough of the whole system with reference screenshots from the VizVoice pitch.
+
 
 The pitchcraft skill (`~/.claude/skills/pitchcraft/`) consumes this repo as a git submodule and reads:
 
