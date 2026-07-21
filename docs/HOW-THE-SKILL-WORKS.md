@@ -169,7 +169,7 @@ Enforced automatically because they live in the template + audit scripts:
 
 1. **Electric Blue 30 (`#0D3DFF`) is the mandatory Agentforce accent.** Available as `--sf-electric-30` in every theme.
 2. **Agentforce is one word.** Any occurrence ≥24px uses `<span class="af-mark">Agent<span class="af-f">f</span>orce</span>` — the "f" carries a `skewX(-11deg)` faux-italic and inherits the sans family.
-3. **Data Cloud, not "Data 360."** The template has zero references to "Data 360."
+3. **Data 360** is the current Salesforce brand name (rebranded from Data Cloud). Written "Data 360" in visible copy; narrated as "Data three sixty," never "Data three hundred sixty."
 4. **No em dashes in visible copy.** Enforced during copy edits.
 5. **Glass-pill motif** is reserved for three eyebrow-analog labels only: title chip, reframe lead, close eyebrow.
 6. **Title-slide lockup** always shows Salesforce cloud + hairline divider + Agentforce icon on the left.

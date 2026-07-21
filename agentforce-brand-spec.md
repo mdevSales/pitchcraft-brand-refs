@@ -91,7 +91,7 @@ All-caps mono labels must carry letter-spacing ≥0.08em.
 
 - Reserved for the emotional beat, once per slide maximum.
 - Renders in the theme's poetic italic (`--font-poetic`).
-- Do not italicize proper product names ("Agentforce," "Data Cloud"). Use the wordmark treatment instead.
+- Do not italicize proper product names ("Agentforce," "Data 360"). Use the wordmark treatment instead.
 
 ---
 
@@ -167,7 +167,7 @@ Rules:
 ### Brand words
 
 - **Agentforce** — one word, capital A. Never "Agent Force." Never "AgentForce."
-- **Data Cloud** — two words, both capitalized. **Never write "Data 360" as a brand name.** If narrating, say "Data three sixty" only when the user explicitly asked for it; the deck must still spell "Data Cloud."
+- **Data 360** — the current Salesforce brand name (rebranded from Data Cloud). Always written "Data 360" in visible copy. **Narration rule:** say "Data three sixty," never "Data three hundred sixty."
 - **Flow**, **Apex**, **Tableau**, **MuleSoft**, **Slack**, **Experience Cloud** — capitalized when referring to the Salesforce product.
 
 ### Punctuation

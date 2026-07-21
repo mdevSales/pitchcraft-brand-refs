@@ -30,6 +30,6 @@ The skill's `SKILL.md` cites the exact path within this submodule for every rule
 
 - **Electric Blue 30 (`#0D3DFF`)** is the mandatory Agentforce accent.
 - **Agentforce is one word**; visible text ≥24px uses `<span class="af-mark">Agent<span class="af-f">f</span>orce</span>`.
-- **Data Cloud** is the brand name. Never write "Data 360."
+- **Data 360** is the current brand name (rebranded from Data Cloud). Written "Data 360"; narrated as "Data three sixty."
 - **No em dashes** in visible deck copy.
 - **Glass-pill motif** is reserved for the title-chip, reframe-lead, and close-eyebrow. Not scattered.
