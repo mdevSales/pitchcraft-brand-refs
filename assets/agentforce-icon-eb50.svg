@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Agentforce">
+  <defs>
+    <radialGradient id="afHead" cx="0.5" cy="0.4" r="0.7">
+      <stop offset="0" stop-color="#5B7CFF"/>
+      <stop offset="1" stop-color="#2E5BFF"/>
+    </radialGradient>
+  </defs>
+  <g fill="url(#afHead)">
+    <circle cx="24" cy="30" r="14"/>
+    <circle cx="96" cy="30" r="14"/>
+    <circle cx="60" cy="66" r="46"/>
+  </g>
+  <path d="M18 62 Q60 54 102 62 L102 74 Q60 82 18 74 Z" fill="#001E5B" opacity="0.85"/>
+  <ellipse cx="38" cy="68" rx="14" ry="8" fill="#0A1747"/>
+  <ellipse cx="82" cy="68" rx="14" ry="8" fill="#0A1747"/>
+  <circle cx="42" cy="66" r="2.4" fill="#7DA0FF" opacity="0.9"/>
+  <circle cx="86" cy="66" r="2.4" fill="#7DA0FF" opacity="0.9"/>
+  <path d="M40 32 Q58 22 78 30 Q60 38 46 46 Z" fill="rgba(255,255,255,0.22)"/>
+</svg>

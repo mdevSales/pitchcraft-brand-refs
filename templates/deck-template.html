@@ -1,0 +1,1722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VizVoice · What if your analyst can't see your dashboard?</title>
+
+    <!-- Manrope stands in for Salesforce Sans (geometric humanist, same visual weight).
+         Cormorant italic reserved for pull-quotes / emotional moments.
+         The Agentforce wordmark uses a CSS skewX faux-italic on the "f" so it inherits
+         the sans family (Avant Garde Italic is not available on the web). -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Cormorant:ital,wght@1,400;1,500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        /* ===========================================
+           SALESFORCE BRAND TOKENS (RGB 2026)
+           From official palette + Cloud Blue signature system
+           =========================================== */
+        :root {
+            /* Core palette (Agentforce brand: Electric Blue 30 is the mandatory accent) */
+            --sf-electric-15: #001E5B;   /* deepest navy, brand anchor */
+            --sf-electric-30: #0D3DFF;   /* PRIMARY Agentforce Electric Blue accent */
+            --sf-electric-50: #2E5BFF;   /* Agentforce Electric Blue mid */
+            --sf-cloud-68:    #00B3FF;   /* Cloud Blue signature (secondary accent) */
+            --sf-cloud-80:    #90D0FE;
+            --sf-cloud-95:    #EAF5FE;
+            --sf-yellow-80:   #FCC003;   /* Trailhead / highlight gold */
+            --sf-pink-60:     #FF538A;
+            --sf-teal-60:     #06A59A;
+            --sf-teal-80:     #04E1CB;
+            --sf-violet-65:   #D17DFE;
+            --sf-orange-60:   #FF5D2D;
+
+            /* Applied roles */
+            --stage-bg:       #000516;
+            --slide-bg:       var(--sf-electric-15);
+            --surface-elev:   rgba(0, 179, 255, 0.06);
+            --line-soft:      rgba(0, 179, 255, 0.28);
+            --line-strong:    var(--sf-cloud-68);
+            --text-primary:   #ffffff;
+            --text-secondary: #a8c5f5;
+            --text-muted:     #5b7ba8;
+
+            --font-display: 'Manrope', -apple-system, sans-serif;
+            --font-body:    'Manrope', -apple-system, sans-serif;
+            --font-mono:    'IBM Plex Mono', monospace;
+            --font-poetic:  'Cormorant', serif;
+
+            --slide-padding: 112px;
+            --radius-lg: 20px;
+            --radius-md: 12px;
+
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration: 0.9s;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ===========================================
+           FIXED 16:9 STAGE (viewport-base.css)
+           =========================================== */
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: var(--stage-bg);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-weight: 400;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .deck-viewport { position: fixed; inset: 0; overflow: hidden; background: var(--stage-bg); }
+        .deck-stage {
+            position: absolute; left: 0; top: 0;
+            width: 1920px; height: 1080px;
+            overflow: hidden;
+            transform-origin: 0 0;
+            background: var(--slide-bg);
+        }
+        .slide {
+            position: absolute; inset: 0;
+            width: 1920px; height: 1080px;
+            overflow: hidden;
+            display: block;
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+            background: var(--slide-bg);
+        }
+        .slide.active,
+        .slide.visible {
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
+            z-index: 1;
+        }
+        img, video, canvas, svg { max-width: 100%; max-height: 100%; }
+        .deck-controls { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 1000; }
+        @media print {
+            html, body { width: 1920px; height: auto; overflow: visible; background: #fff; }
+            .deck-viewport { position: static; overflow: visible; background: #fff; }
+            .deck-stage { position: static; width: auto; height: auto; transform: none !important; background: none; }
+            .slide {
+                position: relative; display: block !important;
+                visibility: visible !important; opacity: 1 !important;
+                pointer-events: auto !important;
+                width: 1920px; height: 1080px;
+                break-after: page; page-break-after: always;
+            }
+            .slide:last-child { break-after: auto; page-break-after: auto; }
+            .deck-controls { display: none !important; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.2s !important;
+            }
+        }
+
+        /* ===========================================
+           ATMOSPHERE — Salesforce-flavored cloud shapes
+           Blurred orbs use Cloud Blue 68 / Electric Blue 30 / Yellow 80
+           =========================================== */
+        .atmosphere { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+        .orb { position: absolute; border-radius: 50%; filter: blur(140px); opacity: 0.5; }
+        .orb-cloud    { width: 900px; height: 900px; background: radial-gradient(circle, rgba(0,179,255,0.85) 0%, transparent 70%); top: -300px; left: -200px; }
+        .orb-electric { width: 700px; height: 700px; background: radial-gradient(circle, rgba(6,106,254,0.7) 0%, transparent 70%); bottom: -220px; right: -160px; }
+        .orb-royal    { width: 620px; height: 620px; background: radial-gradient(circle, rgba(2,42,192,0.75) 0%, transparent 70%); top: 40%; right: 12%; }
+        .orb-yellow   { width: 380px; height: 380px; background: radial-gradient(circle, rgba(252,192,3,0.35) 0%, transparent 70%); bottom: 8%; left: 12%; }
+        .orb-pink     { width: 460px; height: 460px; background: radial-gradient(circle, rgba(255,83,138,0.35) 0%, transparent 70%); top: 12%; right: 30%; }
+
+        .grain {
+            position: absolute; inset: 0;
+            pointer-events: none;
+            opacity: 0.05;
+            mix-blend-mode: overlay;
+            z-index: 0;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/></filter><rect width='200' height='200' filter='url(%23n)' opacity='1'/></svg>");
+        }
+
+        /* ===========================================
+           LAYOUT PRIMITIVES
+           =========================================== */
+        .slide-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            padding: var(--slide-padding);
+            display: flex;
+            flex-direction: column;
+            z-index: 2;
+        }
+
+        h1, h2, h3 {
+            font-family: var(--font-display);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+            line-height: 1.02;
+        }
+
+        p {
+            font-family: var(--font-body);
+            font-weight: 400;
+            color: var(--text-secondary);
+            line-height: 1.55;
+        }
+
+        em, i {
+            font-family: var(--font-poetic);
+            font-style: italic;
+            font-weight: 500;
+            color: var(--sf-cloud-68);
+        }
+
+        .eyebrow {
+            font-family: var(--font-mono);
+            font-size: 15px;
+            letter-spacing: 0.32em;
+            text-transform: uppercase;
+            color: var(--sf-cloud-68);
+            font-weight: 500;
+            margin-bottom: 40px;
+        }
+
+        /* Official Salesforce horizontal logo (white / KO on dark) */
+        .sf-logo {
+            display: inline-flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .sf-logo img {
+            display: block;
+            height: 44px;
+            width: auto;
+            max-height: none;
+            max-width: none;
+            object-fit: contain;
+        }
+
+        /* Agentforce official 2D icon (Electric Blue 50, sunglasses face) */
+        .af-icon {
+            display: inline-flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .af-icon img {
+            display: block;
+            height: 40px;
+            width: auto;
+        }
+        .title-brand-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 18px;
+        }
+        .brand-divider {
+            display: inline-block;
+            width: 1px;
+            height: 28px;
+            background: rgba(255, 255, 255, 0.28);
+        }
+
+        /* Agentforce wordmark — inherits the sans family; the "f" carries a skewX
+           faux-italic so it echoes the official lockup without needing a serif italic. */
+        .af-mark { font-family: inherit; font-weight: inherit; }
+        .af-mark .af-f {
+            font-family: inherit;
+            font-weight: inherit;
+            font-style: normal;
+            color: inherit;
+            display: inline-block;
+            transform: skewX(-11deg);
+            transform-origin: 0 100%;
+            padding: 0 0.04em 0 0.02em;
+        }
+
+        /* Glass pill motif (per Agentforce brand spec)
+           Applied to eyebrow-analog elements on the title, reframe, and close slides. */
+        .pill {
+            display: inline-block;
+            padding: 14px 28px;
+            background: rgba(255, 255, 255, 0.20);
+            backdrop-filter: blur(40px) saturate(1.1);
+            -webkit-backdrop-filter: blur(40px) saturate(1.1);
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            border-radius: 999px;
+            box-shadow:
+                0 26px 26px rgba(6, 106, 254, 0.30),
+                inset 0 1px 0 rgba(255, 255, 255, 0.35);
+            color: #ffffff;
+            font-size: 16px;
+            letter-spacing: 0.28em;
+        }
+        .eyebrow.pill,
+        .reframe-lead.pill,
+        .close-eyebrow.pill,
+        .brand-mark.pill { color: #ffffff; }
+        .reframe-lead.pill  { margin-bottom: 56px; }
+        .close-eyebrow.pill { margin-bottom: 28px; }
+
+        /* ===========================================
+           REVEAL ANIMATIONS
+           =========================================== */
+        .reveal {
+            opacity: 0;
+            transform: translateY(28px);
+            transition: opacity var(--duration) var(--ease-out-expo),
+                        transform var(--duration) var(--ease-out-expo);
+        }
+        .slide.visible .reveal { opacity: 1; transform: translateY(0); }
+        .slide.visible .reveal:nth-child(1) { transition-delay: 0.15s; }
+        .slide.visible .reveal:nth-child(2) { transition-delay: 0.35s; }
+        .slide.visible .reveal:nth-child(3) { transition-delay: 0.55s; }
+        .slide.visible .reveal:nth-child(4) { transition-delay: 0.75s; }
+        .slide.visible .reveal:nth-child(5) { transition-delay: 0.95s; }
+        .slide.visible .reveal:nth-child(6) { transition-delay: 1.15s; }
+
+        .reveal-slow {
+            opacity: 0;
+            transform: translateY(40px);
+            filter: blur(14px);
+            transition: opacity 1.4s var(--ease-out-expo),
+                        transform 1.4s var(--ease-out-expo),
+                        filter 1.4s var(--ease-out-expo);
+        }
+        .slide.visible .reveal-slow { opacity: 1; transform: translateY(0); filter: blur(0); }
+
+        /* ===========================================
+           SLIDE 1 — TITLE
+           =========================================== */
+        .title-slide .slide-inner { justify-content: space-between; }
+        .title-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .brand-mark {
+            font-family: var(--font-mono);
+            font-size: 15px;
+            letter-spacing: 0.32em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+        .title-hero { display: flex; flex-direction: column; gap: 32px; }
+        .wordmark {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 64px;
+            letter-spacing: -0.02em;
+            color: #ffffff;
+            line-height: 1;
+        }
+        .wordmark-close { font-size: 44px; margin-bottom: 24px; }
+        .title-hero h1 {
+            font-size: 156px;
+            font-weight: 800;
+            line-height: 0.96;
+            letter-spacing: -0.03em;
+        }
+        .title-hero h1 em {
+            color: var(--sf-cloud-68);
+            font-family: var(--font-poetic);
+            font-style: italic;
+            font-weight: 500;
+        }
+        .title-subtitle {
+            font-family: var(--font-body);
+            font-weight: 400;
+            font-size: 34px;
+            color: var(--text-secondary);
+            max-width: 1100px;
+            line-height: 1.35;
+        }
+        .title-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        /* ===========================================
+           SLIDE 2 — HUMAN MOMENT
+           =========================================== */
+        .scene .slide-inner { justify-content: center; }
+        .scene-quote {
+            font-family: var(--font-display);
+            font-weight: 500;
+            font-size: 96px;
+            line-height: 1.08;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+            max-width: 1500px;
+        }
+        .scene-quote .highlight {
+            color: var(--sf-cloud-68);
+            font-family: var(--font-poetic);
+            font-style: italic;
+            font-weight: 500;
+        }
+        .scene-caption {
+            font-family: var(--font-mono);
+            font-size: 15px;
+            letter-spacing: 0.28em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-top: 64px;
+            max-width: 900px;
+            line-height: 1.9;
+        }
+
+        /* ===========================================
+           SLIDE 3 — THE NUMBER
+           =========================================== */
+        .stat-slide .slide-inner {
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        .stat-hero {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 460px;
+            line-height: 0.85;
+            letter-spacing: -0.055em;
+            background: linear-gradient(180deg, #ffffff 0%, var(--sf-cloud-68) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .stat-caption {
+            font-family: var(--font-display);
+            font-weight: 500;
+            font-size: 42px;
+            color: var(--text-secondary);
+            max-width: 1200px;
+            margin-top: 32px;
+            line-height: 1.3;
+        }
+        .stat-caption em {
+            font-family: var(--font-poetic);
+            font-weight: 500;
+            color: var(--sf-cloud-68);
+        }
+        .stat-context {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            letter-spacing: 0.28em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-top: 40px;
+        }
+
+        /* ===========================================
+           SLIDE 4 — CRITIQUE
+           =========================================== */
+        .critique .slide-inner { justify-content: center; }
+        .critique-header {
+            font-family: var(--font-mono);
+            font-size: 15px;
+            letter-spacing: 0.32em;
+            text-transform: uppercase;
+            color: var(--sf-cloud-68);
+            margin-bottom: 48px;
+        }
+        .critique-title {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 104px;
+            line-height: 1.02;
+            max-width: 1500px;
+            margin-bottom: 88px;
+            letter-spacing: -0.025em;
+        }
+        .critique-title em {
+            font-family: var(--font-poetic);
+            font-style: italic;
+            font-weight: 500;
+            color: var(--sf-cloud-68);
+        }
+        .critique-list {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+            max-width: 1700px;
+        }
+        .critique-item {
+            background: var(--surface-elev);
+            border: 1px solid var(--line-soft);
+            border-radius: var(--radius-lg);
+            padding: 36px 32px;
+        }
+        .critique-item-title {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 28px;
+            color: var(--sf-cloud-68);
+            margin-bottom: 20px;
+        }
+        .critique-item p {
+            font-size: 20px;
+            line-height: 1.6;
+        }
+
+        /* ===========================================
+           SLIDE 5 — REFRAME
+           =========================================== */
+        .reframe .slide-inner {
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        .reframe-lead {
+            font-family: var(--font-mono);
+            font-size: 15px;
+            letter-spacing: 0.32em;
+            text-transform: uppercase;
+            color: var(--sf-cloud-68);
+            margin-bottom: 56px;
+        }
+        .reframe-main {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 152px;
+            line-height: 0.98;
+            letter-spacing: -0.035em;
+            max-width: 1650px;
+        }
+        .reframe-main em {
+            color: var(--sf-cloud-68);
+            font-family: var(--font-poetic);
+            font-style: italic;
+            font-weight: 500;
+        }
+        .reframe-sub {
+            font-family: var(--font-poetic);
+            font-style: italic;
+            font-size: 44px;
+            color: var(--text-secondary);
+            margin-top: 56px;
+            max-width: 1200px;
+            line-height: 1.35;
+        }
+
+        /* ===========================================
+           SLIDE 6 — SOLUTION / ARCHITECTURE
+           =========================================== */
+        .solution .slide-inner { justify-content: space-between; }
+        .solution-title {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 96px;
+            line-height: 1.02;
+            margin-top: 12px;
+            max-width: 1500px;
+            letter-spacing: -0.03em;
+        }
+        .solution-title strong { font-weight: 800; color: var(--sf-cloud-68); }
+        .arch-diagram {
+            margin-top: 32px;
+            padding: 56px 40px 40px;
+            background: linear-gradient(180deg, rgba(0, 179, 255, 0.06) 0%, rgba(0, 179, 255, 0.02) 100%);
+            border: 1px solid var(--line-soft);
+            border-radius: var(--radius-lg);
+        }
+        .arch-diagram svg { width: 100%; height: 480px; display: block; }
+        .arch-step rect { rx: 18; }
+        .arch-step .box-fill { fill: rgba(0, 179, 255, 0.10); stroke: var(--sf-cloud-68); stroke-width: 2; }
+        .arch-step.data .box-fill { fill: rgba(252, 192, 3, 0.10); stroke: var(--sf-yellow-80); stroke-width: 2; }
+        .arch-step.hub .box-fill { fill: rgba(0, 179, 255, 0.22); stroke: var(--sf-cloud-68); stroke-width: 3; }
+        .arch-step .step-num-text {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            letter-spacing: 0.28em;
+            fill: var(--sf-cloud-68);
+            font-weight: 500;
+        }
+        .arch-step.data .step-num-text { fill: var(--sf-yellow-80); }
+        .arch-step .step-label {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 22px;
+            fill: #fff;
+            letter-spacing: -0.01em;
+        }
+        .arch-step .step-tech {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            letter-spacing: 0.14em;
+            fill: #a8c5f5;
+            text-transform: uppercase;
+        }
+        .arch-flow { stroke: var(--sf-cloud-68); stroke-width: 2.5; fill: none; }
+        .arch-flow.up { stroke: var(--sf-yellow-80); }
+        .arch-flow.loop { stroke-dasharray: 6 8; opacity: 0.55; stroke-width: 2; }
+        .arch-flow-label {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            fill: var(--sf-cloud-68);
+            font-weight: 500;
+        }
+        .arch-flow-label.up { fill: var(--sf-yellow-80); }
+        .arch-flow-label.loop { fill: var(--text-muted); }
+
+        /* ===========================================
+           SEMANTIC MODEL (DMO) SLIDE
+           =========================================== */
+        .semantic .slide-inner { justify-content: center; }
+        .semantic-lead {
+            font-family: var(--font-mono);
+            font-size: 15px;
+            letter-spacing: 0.32em;
+            text-transform: uppercase;
+            color: var(--sf-cloud-68);
+            margin-bottom: 32px;
+        }
+        .semantic-title {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 88px;
+            line-height: 1.02;
+            letter-spacing: -0.025em;
+            margin-bottom: 24px;
+            max-width: 1500px;
+        }
+        .semantic-title em {
+            color: var(--sf-cloud-68);
+            font-family: var(--font-poetic);
+            font-style: italic;
+            font-weight: 500;
+        }
+        .semantic-sub {
+            font-family: var(--font-body);
+            font-size: 24px;
+            color: var(--text-secondary);
+            max-width: 1200px;
+            margin-bottom: 48px;
+            line-height: 1.5;
+        }
+        .semantic-graph {
+            background: var(--surface-elev);
+            border: 1px solid var(--line-soft);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            overflow: hidden;
+        }
+        .semantic-graph svg { width: 100%; height: 480px; display: block; }
+        .semantic-graph video {
+            width: 100%;
+            height: 480px;
+            display: block;
+            border-radius: calc(var(--radius-lg) - 8px);
+            object-fit: contain;
+            background: var(--sf-electric-15);
+        }
+        .dmo-node circle { fill: var(--sf-cloud-68); }
+        .dmo-node.dim circle { fill: rgba(0, 179, 255, 0.35); }
+        .dmo-node text {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 16px;
+            fill: var(--text-primary);
+            text-anchor: middle;
+        }
+        .dmo-node .dmo-glyph { fill: #fff; stroke: none; }
+        .dmo-edge { stroke: rgba(168, 197, 245, 0.35); stroke-width: 1.5; fill: none; }
+
+        /* ===========================================
+           SLIDE 7 — LIVE DEMO
+           =========================================== */
+        .demo .slide-inner { justify-content: center; }
+        .demo-header {
+            display: flex;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 20px 32px;
+            margin-bottom: 40px;
+        }
+        .demo-caption {
+            flex-basis: 100%;
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 44px;
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+            max-width: 1500px;
+            margin-top: 12px;
+        }
+        .demo-caption em {
+            font-family: var(--font-poetic);
+            font-style: italic;
+            font-weight: 500;
+            color: var(--sf-cloud-68);
+        }
+        .live-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--sf-cloud-68);
+            box-shadow: 0 0 24px var(--sf-cloud-68);
+            animation: pulse 2.4s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; transform: scale(0.85); }
+            50%      { opacity: 1;    transform: scale(1.15); }
+        }
+        .demo-header .eyebrow { margin: 0; }
+        .conversation {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            max-width: 1500px;
+        }
+        .demo-video-frame {
+            width: 100%;
+            max-width: 1600px;
+            margin: 0 auto;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            background: var(--sf-electric-15);
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(0, 179, 255, 0.18);
+        }
+        .demo-video-frame video {
+            width: 100%;
+            height: 700px;
+            display: block;
+            object-fit: contain;
+            background: var(--sf-electric-15);
+        }
+        .exchange { display: flex; flex-direction: column; gap: 14px; }
+        .who {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            letter-spacing: 0.28em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+        .user-line .who { color: var(--sf-yellow-80); }
+        .agent-line .who { color: var(--sf-cloud-68); }
+
+        .said {
+            font-family: var(--font-display);
+            font-weight: 500;
+            font-size: 36px;
+            line-height: 1.28;
+            color: var(--text-primary);
+            letter-spacing: -0.015em;
+        }
+        .agent-line .said em {
+            color: var(--sf-cloud-68);
+            font-family: var(--font-poetic);
+            font-style: italic;
+            font-weight: 500;
+        }
+        .follow-up {
+            display: block;
+            font-family: var(--font-poetic);
+            font-style: italic;
+            font-weight: 400;
+            font-size: 26px;
+            color: var(--sf-cloud-80);
+            margin-top: 8px;
+            letter-spacing: 0;
+        }
+        .demo .conversation { gap: 28px; }
+
+        /* ===========================================
+           SLIDE 8 — HOW WE BUILT IT
+           =========================================== */
+        .built .slide-inner { justify-content: space-between; }
+        .built-title {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 104px;
+            line-height: 1.02;
+            margin-top: 32px;
+            max-width: 1400px;
+            letter-spacing: -0.025em;
+        }
+        .built-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 40px;
+            margin-top: 56px;
+        }
+        .built-grid.three { grid-template-columns: repeat(3, 1fr); }
+        .built-title em {
+            font-family: var(--font-poetic);
+            font-style: italic;
+            font-weight: 500;
+            color: var(--sf-cloud-68);
+        }
+        .built-item {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 28px;
+            padding: 32px;
+            background: var(--surface-elev);
+            border: 1px solid var(--line-soft);
+            border-radius: var(--radius-lg);
+            align-items: start;
+        }
+        .built-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, var(--sf-cloud-68) 0%, var(--sf-electric-30) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .built-icon svg { width: 40px; height: 40px; color: #fff; }
+        .built-copy { display: flex; flex-direction: column; gap: 8px; }
+        .built-label {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            letter-spacing: 0.32em;
+            text-transform: uppercase;
+            color: var(--sf-cloud-68);
+        }
+        .built-value {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 30px;
+            color: var(--text-primary);
+            line-height: 1.15;
+            letter-spacing: -0.01em;
+        }
+        .built-desc {
+            font-size: 18px;
+            color: var(--text-secondary);
+            line-height: 1.55;
+            margin-top: 4px;
+        }
+        .pillars {
+            display: flex;
+            justify-content: space-between;
+            gap: 40px;
+            margin-top: 40px;
+            padding-top: 32px;
+            border-top: 1px solid var(--line-soft);
+        }
+        .pillar {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+        .pillar-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--sf-cloud-68);
+            box-shadow: 0 0 12px var(--sf-cloud-68);
+            flex-shrink: 0;
+        }
+
+        /* ===========================================
+           SLIDE 9 — BETTER DEFAULT
+           =========================================== */
+        .better .slide-inner { justify-content: center; }
+        .better-title {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 124px;
+            line-height: 1.02;
+            max-width: 1500px;
+            margin-bottom: 88px;
+            letter-spacing: -0.03em;
+        }
+        .better-title em {
+            color: var(--sf-cloud-68);
+            font-family: var(--font-poetic);
+            font-style: italic;
+            font-weight: 500;
+        }
+        .better-list {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 72px;
+            max-width: 1700px;
+        }
+        .better-item {
+            border-top: 2px solid var(--sf-cloud-68);
+            padding-top: 32px;
+        }
+        .better-item h3 {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 40px;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            line-height: 1.05;
+            letter-spacing: -0.015em;
+        }
+        .better-item h3 em {
+            font-family: var(--font-poetic);
+            font-style: italic;
+            font-weight: 500;
+            color: var(--sf-yellow-80);
+        }
+        .better-item p {
+            font-size: 20px;
+            line-height: 1.6;
+        }
+
+        /* ===========================================
+           SLIDE 10 — CLOSE
+           =========================================== */
+        .close .slide-inner { justify-content: space-between; }
+        .close-eyebrow {
+            font-family: var(--font-mono);
+            font-size: 15px;
+            letter-spacing: 0.32em;
+            text-transform: uppercase;
+            color: var(--sf-cloud-68);
+        }
+        .close-headline {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 168px;
+            line-height: 0.98;
+            letter-spacing: -0.035em;
+            max-width: 1650px;
+            margin-top: 32px;
+        }
+        .close-headline em {
+            color: var(--sf-cloud-68);
+            font-family: var(--font-poetic);
+            font-style: italic;
+            font-weight: 500;
+        }
+        .close-sub {
+            font-family: var(--font-body);
+            font-size: 34px;
+            color: var(--text-secondary);
+            margin-top: 40px;
+            max-width: 1300px;
+            line-height: 1.4;
+        }
+        .close-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding-top: 40px;
+            border-top: 1px solid var(--line-soft);
+        }
+        .team { display: flex; flex-direction: column; gap: 20px; }
+        .team-people { display: flex; gap: 44px; align-items: flex-end; }
+        .team-person { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+        .team-avatar {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 3px solid var(--sf-cloud-68);
+            box-shadow: 0 12px 40px rgba(0, 15, 61, 0.45);
+            background: var(--sf-electric-15);
+        }
+        .team-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .team-label {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            letter-spacing: 0.32em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+        .team-names {
+            font-family: var(--font-display);
+            font-size: 26px;
+            font-weight: 500;
+            color: var(--text-primary);
+            line-height: 1.4;
+        }
+        .close-org {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 22px;
+        }
+        .close-org .sf-logo img { height: 40px; }
+
+        /* Abilityforce mark — inline chip using real SVG asset */
+        .abilityforce-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .abilityforce-chip img {
+            width: 32px;
+            height: 32px;
+            max-height: none;
+            max-width: none;
+            flex-shrink: 0;
+            display: block;
+        }
+        .abilityforce-lockup {
+            display: inline-flex;
+            align-items: center;
+            gap: 16px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            letter-spacing: 0.28em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+        .abilityforce-lockup img {
+            width: 52px;
+            height: 52px;
+            max-height: none;
+            max-width: none;
+            flex-shrink: 0;
+            display: block;
+        }
+        .abilityforce-lockup .lockup-title {
+            color: var(--text-primary);
+            letter-spacing: 0.02em;
+            text-transform: none;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 22px;
+        }
+        .abilityforce-lockup .lockup-sub {
+            display: block;
+            color: var(--sf-cloud-68);
+            font-size: 11px;
+            letter-spacing: 0.32em;
+            margin-top: 4px;
+        }
+
+        /* ===========================================
+           DECK CONTROLS
+           =========================================== */
+        .deck-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            letter-spacing: 0.2em;
+            color: var(--text-muted);
+        }
+        .progress-track {
+            width: 180px;
+            height: 2px;
+            background: rgba(168, 197, 245, 0.15);
+            position: relative;
+        }
+        .progress-bar {
+            position: absolute;
+            inset: 0;
+            background: var(--sf-cloud-68);
+            transform-origin: left;
+            transform: scaleX(0);
+            transition: transform 0.6s var(--ease-out-expo);
+            box-shadow: 0 0 12px var(--sf-cloud-68);
+        }
+        .counter { color: var(--text-secondary); }
+        .counter .current { color: var(--sf-cloud-68); }
+
+        /* ===========================================
+           EDIT MODE
+           =========================================== */
+        .edit-hotzone {
+            position: fixed; top: 0; left: 0;
+            width: 80px; height: 80px;
+            z-index: 10000; cursor: pointer;
+        }
+        .edit-toggle {
+            position: fixed; top: 20px; left: 20px;
+            z-index: 10001;
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            border: 1px solid var(--sf-cloud-68);
+            background: rgba(0, 30, 91, 0.85);
+            color: var(--sf-cloud-68);
+            font-size: 18px;
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            backdrop-filter: blur(6px);
+        }
+        .edit-toggle.show,
+        .edit-toggle.active { opacity: 1; pointer-events: auto; }
+        .edit-toggle.active {
+            background: var(--sf-cloud-68);
+            color: var(--sf-electric-15);
+        }
+        [contenteditable="true"] {
+            outline: 1px dashed var(--sf-cloud-68);
+            outline-offset: 6px;
+            border-radius: 2px;
+        }
+        [contenteditable="true"]:focus {
+            outline: 1px solid var(--sf-cloud-68);
+            background: rgba(0, 179, 255, 0.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="edit-hotzone" aria-hidden="true"></div>
+    <button class="edit-toggle" id="editToggle" title="Toggle edit mode (E)" aria-label="Toggle edit mode">✎</button>
+
+    <!-- Reusable SVG defs: SF cloud silhouette + icon glyphs -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <defs>
+            <symbol id="icon-agent" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="20" cy="16" r="9"/>
+                <path d="M6 34c2-6 8-9 14-9s12 3 14 9"/>
+                <path d="M17 15h.01M23 15h.01"/>
+            </symbol>
+            <symbol id="icon-data" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <ellipse cx="20" cy="9" rx="12" ry="4"/>
+                <path d="M8 9v10c0 2.2 5.4 4 12 4s12-1.8 12-4V9"/>
+                <path d="M8 19v10c0 2.2 5.4 4 12 4s12-1.8 12-4V19"/>
+            </symbol>
+            <symbol id="icon-code" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 12l-8 8 8 8"/>
+                <path d="M26 12l8 8-8 8"/>
+                <path d="M23 8l-6 24"/>
+            </symbol>
+            <symbol id="icon-voice" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="15" y="6" width="10" height="20" rx="5"/>
+                <path d="M8 20a12 12 0 0 0 24 0"/>
+                <path d="M20 32v4"/>
+            </symbol>
+        </defs>
+    </svg>
+
+    <div class="deck-viewport">
+        <main class="deck-stage" id="deckStage">
+
+            <!-- SLIDE 1 — TITLE -->
+            <section class="slide title-slide active">
+                <div class="atmosphere">
+                    <div class="orb orb-cloud"></div>
+                    <div class="orb orb-electric"></div>
+                    <div class="orb orb-yellow"></div>
+                </div>
+                <div class="grain"></div>
+                <div class="slide-inner">
+                    <div class="title-header reveal">
+                        <span class="title-brand-group">
+                            <span class="sf-logo" aria-label="Salesforce">
+                                <img src="assets/salesforce_horiz_white.svg" alt="Salesforce">
+                            </span>
+                            <span class="brand-divider" aria-hidden="true"></span>
+                            <span class="af-icon" aria-label="Agentforce">
+                                <img src="assets/agentforce-icon-eb50.svg" alt="Agentforce">
+                            </span>
+                        </span>
+                        <!-- Optional context chip (glass pill). Replace copy per pitch,
+                             or remove if the venue/context is already implied elsewhere. -->
+                        <span class="brand-mark pill" style="letter-spacing: 0.24em; font-family: 'IBM Plex Mono', monospace; font-size: 13px;"><!-- FILL: context chip, e.g. "In partnership with X" or venue name --></span>
+                    </div>
+                    <div class="title-hero">
+                        <div class="wordmark reveal">VizVoice</div>
+                        <h1 class="reveal">What if your analyst<br><em>can't see</em> your dashboard?</h1>
+                        <p class="title-subtitle reveal">A voice-first analytics agent for blind and low-vision users.</p>
+                    </div>
+                    <div class="title-footer reveal">
+                        <span>Built on Salesforce · <span class="af-mark">Agent<span class="af-f">f</span>orce</span> + Data Cloud</span>
+                        <span>Builder Track · Two weeks · Three builders</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SLIDE 2 — HUMAN MOMENT -->
+            <section class="slide scene">
+                <div class="atmosphere">
+                    <div class="orb orb-royal"></div>
+                    <div class="orb orb-cloud" style="top: auto; bottom: -280px; left: 30%;"></div>
+                </div>
+                <div class="grain"></div>
+                <div class="slide-inner">
+                    <div class="scene-quote reveal">
+                        <span class="highlight">"Can you look at the dashboard?"</span><br>
+                        Half a room turns toward the screen.<br>
+                        The other half doesn't know what's <em>on it.</em>
+                    </div>
+                    <div class="scene-caption reveal">Somewhere in every product review, someone is nodding along to a chart they cannot see.</div>
+                </div>
+            </section>
+
+            <!-- SLIDE 3 — THE NUMBER -->
+            <section class="slide stat-slide">
+                <div class="atmosphere">
+                    <div class="orb orb-cloud"></div>
+                    <div class="orb orb-electric"></div>
+                    <div class="orb orb-pink"></div>
+                </div>
+                <div class="grain"></div>
+                <div class="slide-inner">
+                    <div class="stat-hero reveal-slow">253M</div>
+                    <div class="stat-caption reveal">people with vision loss.<br>Every one of them, locked out of every dashboard we make <em>decisions</em> from.</div>
+                    <div class="stat-context reveal">Source · World Health Organization</div>
+                </div>
+            </section>
+
+            <!-- SLIDE 4 — WHY NOTHING HAS FIXED IT -->
+            <section class="slide critique">
+                <div class="atmosphere">
+                    <div class="orb orb-royal"></div>
+                </div>
+                <div class="grain"></div>
+                <div class="slide-inner">
+                    <div class="critique-header reveal">Why nothing has fixed this</div>
+                    <h2 class="critique-title reveal">Every "accessibility fix" assumes the goal is <em>reading the chart.</em></h2>
+                    <div class="critique-list">
+                        <div class="critique-item reveal">
+                            <div class="critique-item-title">Alt-text bandaids</div>
+                            <p>Static one-line descriptions, written once by a sighted analyst. The data changes. The alt text doesn't.</p>
+                        </div>
+                        <div class="critique-item reveal">
+                            <div class="critique-item-title">Screen reader hell</div>
+                            <p>Tableau renders as unlabeled SVG. VoiceOver announces "graphic, graphic, graphic" and gives up.</p>
+                        </div>
+                        <div class="critique-item reveal">
+                            <div class="critique-item-title">Tabular fallbacks</div>
+                            <p>Data tables buried three clicks deep. Better than nothing. Worse than useful.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SLIDE 5 — REFRAME -->
+            <section class="slide reframe">
+                <div class="atmosphere">
+                    <div class="orb orb-cloud"></div>
+                    <div class="orb orb-yellow"></div>
+                </div>
+                <div class="grain"></div>
+                <div class="slide-inner">
+                    <div class="reframe-lead pill reveal">The reframe</div>
+                    <h2 class="reframe-main reveal">What if you didn't<br>need to <em>see the chart</em><br>at all?</h2>
+                    <p class="reframe-sub reveal">The insight was never in the pixels. It was in the answer to the question you'd ask about them.</p>
+                </div>
+            </section>
+
+            <!-- SLIDE 6 — SOLUTION / ARCHITECTURE -->
+            <section class="slide solution">
+                <div class="atmosphere">
+                    <div class="orb orb-electric"></div>
+                    <div class="orb orb-cloud" style="top: auto; bottom: -260px; right: 20%; left: auto;"></div>
+                </div>
+                <div class="grain"></div>
+                <div class="slide-inner">
+                    <div class="reveal">
+                        <div class="eyebrow">How it works</div>
+                        <h2 class="solution-title">Ask the dashboard <strong>out loud.</strong><br>Hear the answer back.</h2>
+                    </div>
+                    <div class="arch-diagram reveal">
+                        <svg viewBox="0 0 1720 500" xmlns="http://www.w3.org/2000/svg" aria-label="VizVoice architecture: user speaks, Web Speech transcribes in-browser, Agentforce reasons against the Data Cloud semantic model, browser speaks the answer back">
+                            <defs>
+                                <marker id="a-blue" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 12 6 L 0 12 z" fill="#00B3FF"/>
+                                </marker>
+                                <marker id="a-yellow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 12 6 L 0 12 z" fill="#FCC003"/>
+                                </marker>
+                                <marker id="a-muted" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 12 6 L 0 12 z" fill="#5b7ba8"/>
+                                </marker>
+                            </defs>
+
+                            <!-- zone labels -->
+                            <text x="200" y="60" text-anchor="middle" style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; letter-spacing: 0.28em; fill: #5b7ba8;">CLIENT · BROWSER</text>
+                            <text x="960" y="60" text-anchor="middle" style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; letter-spacing: 0.28em; fill: #00B3FF;">SALESFORCE PLATFORM</text>
+                            <text x="1570" y="60" text-anchor="middle" style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; letter-spacing: 0.28em; fill: #5b7ba8;">CLIENT · BROWSER</text>
+
+                            <!-- soft zone dividers -->
+                            <line x1="410" y1="90" x2="410" y2="430" stroke="rgba(0,179,255,0.18)" stroke-width="1" stroke-dasharray="2 8"/>
+                            <line x1="1470" y1="90" x2="1470" y2="430" stroke="rgba(0,179,255,0.18)" stroke-width="1" stroke-dasharray="2 8"/>
+
+                            <!-- forward flow: 01 → 02 → 03 -->
+                            <path d="M 320 285 L 475 285" stroke="#00B3FF" stroke-width="3" fill="none" marker-end="url(#a-blue)"/>
+                            <path d="M 770 285 L 895 285" stroke="#00B3FF" stroke-width="3" fill="none" marker-end="url(#a-blue)"/>
+
+                            <!-- Data Cloud loop (up-out and down-in) — yellow branch -->
+                            <path d="M 1050 235 C 1090 160 1180 130 1240 130" stroke="#FCC003" stroke-width="3" fill="none" marker-end="url(#a-yellow)"/>
+                            <path d="M 1240 190 C 1180 210 1090 230 1050 260" stroke="#FCC003" stroke-width="3" fill="none" marker-end="url(#a-yellow)"/>
+
+                            <!-- forward flow: 03 → 04 → 05 -->
+                            <path d="M 1115 305 L 1245 305" stroke="#00B3FF" stroke-width="3" fill="none" marker-end="url(#a-blue)"/>
+                            <path d="M 1495 305 L 1560 305" stroke="#00B3FF" stroke-width="3" fill="none" marker-end="url(#a-blue)"/>
+
+                            <!-- Conversation loop -->
+                            <path d="M 1650 355 C 1650 460 1000 480 200 460 C 130 455 130 400 130 380 L 130 355" stroke="#5b7ba8" stroke-width="2" stroke-dasharray="6 8" fill="none" opacity="0.6" marker-end="url(#a-muted)"/>
+
+                            <!-- flow labels -->
+                            <text x="397" y="272" text-anchor="middle" style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; letter-spacing: 0.18em; fill: #00B3FF; text-transform: uppercase; font-weight: 500;">VOICE</text>
+                            <text x="832" y="272" text-anchor="middle" style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; letter-spacing: 0.18em; fill: #00B3FF; text-transform: uppercase; font-weight: 500;">TEXT</text>
+                            <text x="1120" y="175" text-anchor="middle" style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; letter-spacing: 0.18em; fill: #FCC003; text-transform: uppercase; font-weight: 500;">QUERY</text>
+                            <text x="1120" y="248" text-anchor="middle" style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; letter-spacing: 0.18em; fill: #FCC003; text-transform: uppercase; font-weight: 500;">DATA</text>
+                            <text x="1180" y="292" text-anchor="middle" style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; letter-spacing: 0.18em; fill: #00B3FF; text-transform: uppercase; font-weight: 500;">ANSWER</text>
+                            <text x="1553" y="292" text-anchor="middle" style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; letter-spacing: 0.18em; fill: #00B3FF; text-transform: uppercase; font-weight: 500;">SPOKEN</text>
+                            <text x="880" y="475" text-anchor="middle" style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.22em; fill: #5b7ba8; text-transform: uppercase;">CONVERSATION CONTINUES · PROACTIVE FOLLOW-UP</text>
+
+                            <!-- STEP 1 — User speaks -->
+                            <g class="arch-step">
+                                <rect class="box-fill" x="80" y="240" width="240" height="90"/>
+                                <text class="step-num-text" x="102" y="272">01</text>
+                                <text class="step-label" x="102" y="302">User speaks</text>
+                                <text class="step-tech" x="102" y="322">Alt + V · Option + V</text>
+                            </g>
+
+                            <!-- STEP 2 — Browser transcribes -->
+                            <g class="arch-step">
+                                <rect class="box-fill" x="475" y="240" width="295" height="90"/>
+                                <text class="step-num-text" x="497" y="272">02</text>
+                                <text class="step-label" x="497" y="302">Browser transcribes</text>
+                                <text class="step-tech" x="497" y="322">Web Speech API · no cloud STT</text>
+                            </g>
+
+                            <!-- STEP 3 — Agentforce hub -->
+                            <g class="arch-step hub">
+                                <rect class="box-fill" x="895" y="220" width="220" height="140"/>
+                                <text class="step-num-text" x="917" y="252">03</text>
+                                <text class="step-label" x="917" y="286">Agentforce</text>
+                                <text class="step-label" x="917" y="312" style="font-size: 20px;">Agent reasons</text>
+                                <text class="step-tech" x="917" y="336">a11y system prompt</text>
+                            </g>
+
+                            <!-- Data Cloud — above hub, yellow -->
+                            <g class="arch-step data">
+                                <rect class="box-fill" x="1240" y="120" width="310" height="90"/>
+                                <text class="step-num-text" x="1262" y="152">DATA CLOUD</text>
+                                <text class="step-label" x="1262" y="182">Semantic Model</text>
+                                <text class="step-tech" x="1262" y="202">DMOs · one source of truth</text>
+                            </g>
+
+                            <!-- STEP 4 — Browser speaks -->
+                            <g class="arch-step">
+                                <rect class="box-fill" x="1245" y="260" width="250" height="90"/>
+                                <text class="step-num-text" x="1267" y="292">04</text>
+                                <text class="step-label" x="1267" y="322">Browser speaks</text>
+                                <text class="step-tech" x="1267" y="342">Web Speech TTS · no cloud</text>
+                            </g>
+
+                            <!-- STEP 5 — User hears -->
+                            <g class="arch-step">
+                                <rect class="box-fill" x="1560" y="260" width="150" height="90"/>
+                                <text class="step-num-text" x="1582" y="292">05</text>
+                                <text class="step-label" x="1582" y="322" style="font-size: 20px;">User hears</text>
+                            </g>
+                        </svg>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SLIDE 6.5 — SEMANTIC MODEL -->
+            <section class="slide semantic">
+                <div class="atmosphere">
+                    <div class="orb orb-cloud"></div>
+                    <div class="orb orb-royal" style="top: auto; bottom: -220px; left: 30%;"></div>
+                </div>
+                <div class="grain"></div>
+                <div class="slide-inner">
+                    <div class="semantic-lead reveal">Grounded, not guessed</div>
+                    <h2 class="semantic-title reveal">The agent reasons over the <em>same semantic model</em> as every chart in the org.</h2>
+                    <p class="semantic-sub reveal">No screenshot parsing. No vision model. The agent queries the underlying Tableau semantic model directly via the Tableau REST API, so the data a blind user hears is the same authoritative source a sighted user sees.</p>
+                    <div class="semantic-graph reveal">
+                        <video src="assets/semantic-model.mp4"
+                               autoplay muted loop playsinline preload="auto"
+                               aria-label="Data Cloud semantic model animation: Account as the hub connecting Case, Opportunity, Contact, Individual, Activity, and User DMOs">
+                        </video>
+                        <svg viewBox="0 0 1600 480" xmlns="http://www.w3.org/2000/svg" style="display:none" aria-label="Data Cloud semantic model showing Account as the hub connected to Case, Opportunity, User, Contact, Individual, and Activity DMOs">
+                            <!-- edges -->
+                            <path class="dmo-edge" d="M 800 240 L 480 240"/>
+                            <path class="dmo-edge" d="M 800 240 L 1120 240"/>
+                            <path class="dmo-edge" d="M 800 240 L 800 100"/>
+                            <path class="dmo-edge" d="M 800 240 L 800 400"/>
+                            <path class="dmo-edge" d="M 800 240 Q 600 320 480 400"/>
+                            <path class="dmo-edge" d="M 1120 240 L 1120 100"/>
+                            <path class="dmo-edge" d="M 1120 240 L 1120 400"/>
+                            <path class="dmo-edge" d="M 1120 240 L 1440 240"/>
+                            <path class="dmo-edge" d="M 480 240 L 200 240"/>
+
+                            <!-- Account (hub) -->
+                            <g class="dmo-node" transform="translate(800 240)">
+                                <circle r="42"/>
+                                <path class="dmo-glyph" d="M 0 -18 L 14 8 L -14 8 Z M 0 -18 v-4 M 14 8 l 10 8 M -14 8 l -10 8" fill="none" stroke="#fff" stroke-width="2.5"/>
+                                <circle r="3" cy="-18" fill="#fff" stroke="none"/>
+                                <circle r="3" cx="24" cy="16" fill="#fff" stroke="none"/>
+                                <circle r="3" cx="-24" cy="16" fill="#fff" stroke="none"/>
+                                <text y="70">Account</text>
+                            </g>
+                            <!-- Case -->
+                            <g class="dmo-node" transform="translate(200 240)">
+                                <circle r="36"/>
+                                <text y="62">Case</text>
+                            </g>
+                            <!-- Contact -->
+                            <g class="dmo-node dim" transform="translate(480 240)">
+                                <circle r="36"/>
+                                <text y="62">Contact</text>
+                            </g>
+                            <!-- Opportunity (secondary hub) -->
+                            <g class="dmo-node" transform="translate(1120 240)">
+                                <circle r="40"/>
+                                <text y="66">Opportunity</text>
+                            </g>
+                            <!-- Account Contact -->
+                            <g class="dmo-node dim" transform="translate(800 100)">
+                                <circle r="34"/>
+                                <text y="60">Account Contact</text>
+                            </g>
+                            <!-- Activity -->
+                            <g class="dmo-node dim" transform="translate(800 400)">
+                                <circle r="34"/>
+                                <text y="60">Activity</text>
+                            </g>
+                            <!-- Individual -->
+                            <g class="dmo-node dim" transform="translate(480 400)">
+                                <circle r="34"/>
+                                <text y="60">Individual</text>
+                            </g>
+                            <!-- User -->
+                            <g class="dmo-node dim" transform="translate(1120 100)">
+                                <circle r="34"/>
+                                <text y="60">User</text>
+                            </g>
+                            <!-- Opportunity Contact -->
+                            <g class="dmo-node dim" transform="translate(1120 400)">
+                                <circle r="34"/>
+                                <text y="60">Opp Contact</text>
+                            </g>
+                            <!-- Opportunity Line Item -->
+                            <g class="dmo-node dim" transform="translate(1440 240)">
+                                <circle r="34"/>
+                                <text y="60">Line Item</text>
+                            </g>
+                        </svg>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SLIDE 7 — THREE LAYERS -->
+            <section class="slide built">
+                <div class="atmosphere">
+                    <div class="orb orb-electric"></div>
+                </div>
+                <div class="grain"></div>
+                <div class="slide-inner">
+                    <div class="reveal">
+                        <div class="eyebrow">Under the hood</div>
+                        <h2 class="built-title">Three deliberate <em>layers</em><br>of design.</h2>
+                    </div>
+                    <div class="built-grid three">
+                        <div class="built-item reveal">
+                            <div class="built-icon"><svg><use href="#icon-agent"/></svg></div>
+                            <div class="built-copy">
+                                <div class="built-label">Layer 01 · The Agent</div>
+                                <div class="built-value">Speaks like a briefing, not a chart.</div>
+                                <div class="built-desc">System prompt trained for accessibility first — numbers before adjectives, no color or shape references, every answer ends with a follow-up.</div>
+                            </div>
+                        </div>
+                        <div class="built-item reveal">
+                            <div class="built-icon"><svg><use href="#icon-code"/></svg></div>
+                            <div class="built-copy">
+                                <div class="built-label">Layer 02 · The Interface</div>
+                                <div class="built-value">Keyboard-first, screen-reader complete.</div>
+                                <div class="built-desc">WCAG 2.1 AA on every React component. No mouse required. Tested end-to-end with the same screen readers our users rely on.</div>
+                            </div>
+                        </div>
+                        <div class="built-item reveal">
+                            <div class="built-icon"><svg><use href="#icon-voice"/></svg></div>
+                            <div class="built-copy">
+                                <div class="built-label">Layer 03 · The Voice</div>
+                                <div class="built-value">Browser-native, zero cloud spend.</div>
+                                <div class="built-desc">Web Speech for STT and TTS. Roughly half the compute per turn versus hosted speech pipelines — accessibility that is also sustainable.</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pillars reveal">
+                        <span class="pillar"><span class="pillar-dot"></span>Grounded · one Tableau semantic model, two audiences</span>
+                        <span class="pillar"><span class="pillar-dot"></span>Accessible · WCAG 2.1 AA, screen-reader verified</span>
+                        <span class="pillar"><span class="pillar-dot"></span>Sustainable · ~50% less compute per turn</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SLIDE 9 — BETTER DEFAULT -->
+            <section class="slide better">
+                <div class="atmosphere">
+                    <div class="orb orb-cloud"></div>
+                    <div class="orb orb-yellow"></div>
+                </div>
+                <div class="grain"></div>
+                <div class="slide-inner">
+                    <div class="reveal">
+                        <span class="abilityforce-chip" style="margin-bottom: 40px;">
+                            <img src="assets/abilityforce.svg" alt="">
+                            <span class="brand-mark" style="color: var(--sf-cloud-68);">In partnership with Abilityforce</span>
+                        </span>
+                    </div>
+                    <h2 class="better-title reveal">Accessibility isn't a <em>fallback.</em><br>It's a better <em>default.</em></h2>
+                    <div class="better-list">
+                        <div class="better-item reveal">
+                            <h3>Voice is <em>faster</em></h3>
+                            <p>One question, one answer. No filter panel, no drill-down, no dashboard tour, for anyone.</p>
+                        </div>
+                        <div class="better-item reveal">
+                            <h3>Keyboard is <em>universal</em></h3>
+                            <p>Screen-reader users need it. Power users prefer it. Analysts on a plane with a trackpad appreciate it too.</p>
+                        </div>
+                        <div class="better-item reveal">
+                            <h3>Numbers-first is <em>clearer</em></h3>
+                            <p>The discipline that keeps a blind user oriented also cuts the fluff for every executive on a call.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SLIDE 10 — CLOSE -->
+            <section class="slide close">
+                <div class="atmosphere">
+                    <div class="orb orb-cloud"></div>
+                    <div class="orb orb-electric"></div>
+                    <div class="orb orb-yellow"></div>
+                </div>
+                <div class="grain"></div>
+                <div class="slide-inner">
+                    <div class="reveal">
+                        <div class="wordmark wordmark-close">VizVoice</div>
+                        <div class="close-eyebrow pill">This is a solved problem</div>
+                        <h2 class="close-headline">Waiting to <em>scale.</em></h2>
+                        <p class="close-sub">Three people. Two weeks. Every Salesforce customer already owns the platform to ship this tomorrow.</p>
+                    </div>
+                    <div class="close-footer reveal">
+                        <div class="team">
+                            <span class="team-label">Team</span>
+                            <div class="team-people">
+                                <div class="team-person">
+                                    <div class="team-avatar"><img src="assets/team/leandria.png" alt="Leandria Streeter"></div>
+                                    <span class="team-names">Leandria Streeter</span>
+                                </div>
+                                <div class="team-person">
+                                    <div class="team-avatar"><img src="assets/team/mahathi.png" alt="Mahathi Devulapalli"></div>
+                                    <span class="team-names">Mahathi Devulapalli</span>
+                                </div>
+                                <div class="team-person">
+                                    <div class="team-avatar"><img src="assets/team/russell.png" alt="Russell Evans"></div>
+                                    <span class="team-names">Russell Evans</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="close-org">
+                            <span class="sf-logo" aria-label="Salesforce">
+                                <img src="assets/salesforce_horiz_white.svg" alt="Salesforce">
+                            </span>
+                            <span class="abilityforce-lockup">
+                                <img src="assets/abilityforce.svg" alt="Abilityforce">
+                                <span>
+                                    <span class="lockup-title">Abilityforce</span>
+                                    <span class="lockup-sub">Agentforce for Good · Builder Track 2026</span>
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <div class="deck-controls">
+            <span class="counter"><span class="current" id="curSlide">01</span> · <span id="totalSlides">10</span></span>
+            <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
+        </div>
+    </div>
+
+    <script>
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.stage = document.getElementById('deckStage');
+                this.progressBar = document.getElementById('progressBar');
+                this.curSlideEl = document.getElementById('curSlide');
+                this.totalSlidesEl = document.getElementById('totalSlides');
+                this.total = this.slides.length;
+                this.currentSlide = 0;
+                this.totalSlidesEl.textContent = String(this.total).padStart(2, '0');
+                this.setupStageScale();
+                this.setupKeyboardNav();
+                this.setupClickNav();
+                this.setupTouchNav();
+                this.showSlide(0);
+            }
+            setupStageScale() {
+                const scale = () => {
+                    const factor = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+                    const x = (window.innerWidth - 1920 * factor) / 2;
+                    const y = (window.innerHeight - 1080 * factor) / 2;
+                    this.stage.style.transform = `translate(${x}px, ${y}px) scale(${factor})`;
+                };
+                scale();
+                window.addEventListener('resize', scale);
+            }
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.target.getAttribute('contenteditable') === 'true') return;
+                    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+                        e.preventDefault(); this.showSlide(this.currentSlide + 1);
+                    } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+                        e.preventDefault(); this.showSlide(this.currentSlide - 1);
+                    } else if (e.key === 'Home') { this.showSlide(0); }
+                    else if (e.key === 'End') { this.showSlide(this.total - 1); }
+                });
+            }
+            setupClickNav() {
+                document.addEventListener('click', (e) => {
+                    if (e.target.closest('.deck-controls')) return;
+                    if (e.target.closest('.edit-toggle')) return;
+                    if (e.target.closest('.edit-hotzone')) return;
+                    if (window.__editor && window.__editor.isActive) return;
+                    const x = e.clientX;
+                    if (x < window.innerWidth / 2) this.showSlide(this.currentSlide - 1);
+                    else this.showSlide(this.currentSlide + 1);
+                });
+            }
+            setupTouchNav() {
+                let startX = 0;
+                document.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; }, { passive: true });
+                document.addEventListener('touchend', (e) => {
+                    const dx = e.changedTouches[0].clientX - startX;
+                    if (Math.abs(dx) < 40) return;
+                    this.showSlide(this.currentSlide + (dx < 0 ? 1 : -1));
+                }, { passive: true });
+            }
+            showSlide(index) {
+                this.currentSlide = Math.max(0, Math.min(index, this.total - 1));
+                this.slides.forEach((slide, i) => {
+                    const isActive = i === this.currentSlide;
+                    slide.classList.toggle('active', isActive);
+                    slide.classList.toggle('visible', isActive);
+                    slide.querySelectorAll('video').forEach((v) => {
+                        if (isActive) {
+                            v.currentTime = 0;
+                            const p = v.play(); if (p && p.catch) p.catch(() => {});
+                        } else {
+                            v.pause();
+                        }
+                    });
+                });
+                this.curSlideEl.textContent = String(this.currentSlide + 1).padStart(2, '0');
+                this.progressBar.style.transform = `scaleX(${(this.currentSlide + 1) / this.total})`;
+            }
+        }
+
+        class InlineEditor {
+            constructor(deck) {
+                this.deck = deck;
+                this.isActive = false;
+                this.toggle = document.getElementById('editToggle');
+                this.hotzone = document.querySelector('.edit-hotzone');
+                this.hideTimeout = null;
+                this.editableSelectors = [
+                    'h1', 'h2', 'h3',
+                    '.title-subtitle', '.scene-quote', '.scene-caption',
+                    '.stat-caption', '.stat-context',
+                    '.critique-header', '.critique-item-title', '.critique-item p',
+                    '.reframe-lead', '.reframe-sub',
+                    '.eyebrow', '.solution-title',
+                    '.semantic-lead', '.semantic-title', '.semantic-sub',
+                    '.said', '.who', '.follow-up',
+                    '.pillar',
+                    '.built-title', '.built-value', '.built-desc',
+                    '.better-title', '.better-item h3', '.better-item p',
+                    '.close-eyebrow', '.close-headline', '.close-sub',
+                    '.team-names', '.brand-mark'
+                ];
+                this.attachHotzone();
+                this.attachToggle();
+                this.attachKeyboard();
+                this.restore();
+            }
+            attachHotzone() {
+                this.hotzone.addEventListener('mouseenter', () => {
+                    clearTimeout(this.hideTimeout);
+                    this.toggle.classList.add('show');
+                });
+                this.hotzone.addEventListener('mouseleave', () => {
+                    this.hideTimeout = setTimeout(() => {
+                        if (!this.isActive) this.toggle.classList.remove('show');
+                    }, 400);
+                });
+                this.hotzone.addEventListener('click', () => this.toggleEditMode());
+                this.toggle.addEventListener('mouseenter', () => clearTimeout(this.hideTimeout));
+                this.toggle.addEventListener('mouseleave', () => {
+                    this.hideTimeout = setTimeout(() => {
+                        if (!this.isActive) this.toggle.classList.remove('show');
+                    }, 400);
+                });
+            }
+            attachToggle() {
+                this.toggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.toggleEditMode();
+                });
+            }
+            attachKeyboard() {
+                document.addEventListener('keydown', (e) => {
+                    if ((e.key === 'e' || e.key === 'E') &&
+                        !e.target.getAttribute('contenteditable') &&
+                        !e.metaKey && !e.ctrlKey && !e.altKey) {
+                        e.preventDefault();
+                        this.toggleEditMode();
+                    }
+                });
+            }
+            toggleEditMode() {
+                this.isActive = !this.isActive;
+                this.toggle.classList.toggle('active', this.isActive);
+                this.toggle.classList.toggle('show', this.isActive);
+                const editables = document.querySelectorAll(this.editableSelectors.join(','));
+                editables.forEach((el) => {
+                    if (this.isActive) {
+                        el.setAttribute('contenteditable', 'true');
+                        el.addEventListener('blur', () => this.persist(), { once: false });
+                    } else {
+                        el.removeAttribute('contenteditable');
+                    }
+                });
+                if (this.isActive) this.persist();
+            }
+            persist() {
+                try {
+                    const data = {};
+                    const editables = document.querySelectorAll(this.editableSelectors.join(','));
+                    editables.forEach((el, i) => { data['n' + i] = el.innerHTML; });
+                    localStorage.setItem('vizvoice-deck-content', JSON.stringify(data));
+                } catch (_) {}
+            }
+            restore() { /* disabled: HTML is the source of truth */ }
+        }
+
+        try { localStorage.removeItem('vizvoice-deck-content'); } catch (_) {}
+        const deck = new SlidePresentation();
+        window.__editor = new InlineEditor(deck);
+    </script>
+</body>
+</html>
